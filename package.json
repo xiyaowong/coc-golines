@@ -1,6 +1,6 @@
 {
   "name": "coc-golines",
-  "version": "0.0.0-development",
+  "version": "0.0.1",
   "description": "golines extension for coc.nvim",
   "author": "wongxy <xiyao.wong@foxmail.com>",
   "license": "MIT",
