@@ -88,44 +88,33 @@ const ARCH_TOKENS: Record<string, RegExp> = {
   arm64: /(arm64|aarch64)/i,
 }
 
-const assetScore = (name: string): number => {
+const assetMatches = (name: string): boolean => {
   if (!/^golines.*(?:\.zip|\.tar\.gz)$/i.test(name)) {
-    return 0
+    return false
   }
 
-  const platform = PLATFORM_TOKENS[os.platform()]
-  if (!platform?.test(name)) {
-    return 0
+  const platform = os.platform()
+  if (!PLATFORM_TOKENS[platform]?.test(name)) {
+    return false
   }
 
-  if (os.platform() === 'darwin' && /darwin-all/i.test(name)) {
-    return 3
+  if (platform === 'darwin' && /darwin-all/i.test(name)) {
+    return true
   }
 
   const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-  if (ARCH_TOKENS[arch].test(name)) {
-    return 3
-  }
-
-  return 0
+  return ARCH_TOKENS[arch].test(name)
 }
 
 const selectAsset = (release: GolinesRelease): ReleaseAsset => {
-  let selected: { asset: ReleaseAsset, score: number } | undefined
-  for (const asset of release.assets) {
-    const score = assetScore(asset.name)
-    if (score > 0 && (!selected || score > selected.score)) {
-      selected = { asset, score }
-    }
-  }
-
+  const selected = release.assets.find(asset => assetMatches(asset.name))
   if (!selected) {
     const available = release.assets.map(asset => asset.name).join(', ') || '(none)'
     throw new Error(
       `No golines asset for ${os.platform()}-${process.arch} in release ${release.tag_name}: ${available}`,
     )
   }
-  return selected.asset
+  return selected
 }
 
 const locateBinary = async (dir: string): Promise<string | undefined> => {
@@ -147,6 +136,9 @@ const locateBinary = async (dir: string): Promise<string | undefined> => {
   return undefined
 }
 
+const installedBinaryPath = (storageDirectory: string): string =>
+  path.join(storageDirectory, executableName())
+
 const installGolines = async (storageDirectory: string, version: string): Promise<string> =>
   coc.window.withProgress(
     { title: `Installing golines (${version})`, cancellable: true },
@@ -159,7 +151,7 @@ const installGolines = async (storageDirectory: string, version: string): Promis
       const asset = selectAsset(release)
 
       await ensureDirectory(storageDirectory)
-      const target = path.join(storageDirectory, executableName())
+      const target = installedBinaryPath(storageDirectory)
 
       const extractType = asset.name.endsWith('.zip') ? 'unzip' : 'untar'
       progress.report({ message: `Downloading ${asset.name}...` })
@@ -210,8 +202,9 @@ export const reinstallGolines = async (storageDirectory: string): Promise<string
     coc.window.showInformationMessage(`golines installed at ${installed}`)
     return installed
   } catch (error) {
-    if (errorMessage(error) !== 'Canceled') {
-      coc.window.showErrorMessage(`Failed to install golines: ${errorMessage(error)}`)
+    const message = errorMessage(error)
+    if (message !== 'Canceled') {
+      coc.window.showErrorMessage(`Failed to install golines: ${message}`)
     }
     return undefined
   }
@@ -257,7 +250,7 @@ export const ensureGolinesExists = async (
     return configured
   }
 
-  const installed = path.join(storageDirectory, executableName())
+  const installed = installedBinaryPath(storageDirectory)
   if (await fileExists(installed)) {
     const version = await getGolinesVersion(installed)
     if (version) {

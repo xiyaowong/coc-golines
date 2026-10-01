@@ -29,7 +29,7 @@ export const getOptionalString = (key: string): string | undefined => {
 export const getCustomArgs = (): string[] => {
   const value = getConfiguration().get<string | string[]>('args')
   if (Array.isArray(value)) {
-    return value.map(arg => String(arg).trim()).filter(Boolean)
+    return value.map(arg => arg.trim()).filter(Boolean)
   }
   return typeof value === 'string' ? value.split(/\s+/).filter(Boolean) : []
 }

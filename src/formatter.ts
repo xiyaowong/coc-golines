@@ -4,6 +4,8 @@ import { calcPatch } from 'fast-myers-diff'
 import { runCommand } from './golines'
 import { errorMessage, getCustomArgs } from './util'
 
+const uriToPath = (uri: string): string => path.normalize(coc.Uri.parse(uri).fsPath)
+
 const findLine = (lineLengths: number[], pos: number, startLine: number): [number, number] => {
   let low = startLine
   let high = lineLengths.length - 1
@@ -15,8 +17,8 @@ const findLine = (lineLengths: number[], pos: number, startLine: number): [numbe
       high = mid
     }
   }
-  const char = low > 0 ? lineLengths[low - 1] : 0
-  return [low, char]
+  const lineStartOffset = low > 0 ? lineLengths[low - 1] : 0
+  return [low, lineStartOffset]
 }
 
 export class GolinesFormattingEditProvider implements coc.DocumentFormattingEditProvider {
@@ -30,15 +32,12 @@ export class GolinesFormattingEditProvider implements coc.DocumentFormattingEdit
 
     const customArgs = getCustomArgs()
     const currentWorkspace = coc.workspace.getWorkspaceFolder(document.uri)
-    const cwd = currentWorkspace
-      ? path.normalize(coc.Uri.parse(currentWorkspace.uri).fsPath)
-      : undefined
+    const cwd = currentWorkspace ? uriToPath(currentWorkspace.uri) : undefined
     const text = document.getText()
 
     let formattedText: string
     try {
-      const { stdout } = await runCommand(bin, customArgs, text, cwd)
-      formattedText = stdout
+      formattedText = await runCommand(bin, customArgs, text, cwd)
     } catch (error) {
       coc.window.showErrorMessage(`golines failed to format: ${errorMessage(error)}`)
       return []
@@ -60,10 +59,10 @@ export class GolinesFormattingEditProvider implements coc.DocumentFormattingEdit
     const edits: coc.TextEdit[] = []
     let lastLine = 0
     for (const [start, end, newSubstr] of patch) {
-      const [lineStart, charToLineStart] = findLine(lineLengths, start, lastLine)
-      const [lineEnd, charToLineEnd] = findLine(lineLengths, end, lineStart)
-      const charStart = start - charToLineStart
-      const charEnd = end - charToLineEnd
+      const [lineStart, lineStartOffset] = findLine(lineLengths, start, lastLine)
+      const [lineEnd, lineEndOffset] = findLine(lineLengths, end, lineStart)
+      const charStart = start - lineStartOffset
+      const charEnd = end - lineEndOffset
       const range = coc.Range.create(
         coc.Position.create(lineStart, charStart),
         coc.Position.create(lineEnd, charEnd),
@@ -85,7 +84,7 @@ export const formatWorkspace = async (
   }
 
   const rootUri = coc.workspace.workspaceFolders[0]?.uri
-  const rootPath = rootUri ? coc.Uri.parse(rootUri).fsPath : undefined
+  const rootPath = rootUri ? uriToPath(rootUri) : undefined
   if (!rootPath) {
     coc.window.showWarningMessage('No workspace folder found')
     return
