@@ -38,12 +38,15 @@ interface GolinesRelease {
 const requestJson = async <T>(url: string): Promise<T> =>
   (await coc.fetch(url, { headers: REQUEST_HEADERS, timeout: REQUEST_TIMEOUT })) as T
 
-const normalizeTag = (version: string): string => (version.startsWith('v') ? version : `v${version}`)
+const normalizeTag = (version: string): string =>
+  version.startsWith('v') ? version : `v${version}`
 
 const listReleases = async (): Promise<GolinesRelease[]> => {
   const releases: GolinesRelease[] = []
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const batch = await requestJson<GolinesRelease[]>(`${RELEASES_API}?per_page=${PAGE_SIZE}&page=${page}`)
+    const batch = await requestJson<GolinesRelease[]>(
+      `${RELEASES_API}?per_page=${PAGE_SIZE}&page=${page}`,
+    )
     releases.push(...batch)
     if (batch.length < PAGE_SIZE) {
       break
@@ -66,7 +69,8 @@ const getRelease = async (version: string): Promise<GolinesRelease> => {
 
   const releases = await listReleases()
   const release
-    = releases.find(item => item.tag_name === tag) ?? releases.find(item => item.tag_name.startsWith(`${tag}.`))
+    = releases.find(item => item.tag_name === tag)
+      ?? releases.find(item => item.tag_name.startsWith(`${tag}.`))
   if (!release) {
     throw new Error(`No golines release matches "${version}"`)
   }
@@ -144,51 +148,61 @@ const locateBinary = async (dir: string): Promise<string | undefined> => {
 }
 
 const installGolines = async (storageDirectory: string, version: string): Promise<string> =>
-  coc.window.withProgress({ title: `Installing golines (${version})`, cancellable: true }, async (progress, token) => {
-    progress.report({ message: 'Resolving release...' })
-    const release = await getRelease(version)
-    if (token.isCancellationRequested) {
-      throw new Error('Canceled')
-    }
-    const asset = selectAsset(release)
+  coc.window.withProgress(
+    { title: `Installing golines (${version})`, cancellable: true },
+    async (progress, token) => {
+      progress.report({ message: 'Resolving release...' })
+      const release = await getRelease(version)
+      if (token.isCancellationRequested) {
+        throw new Error('Canceled')
+      }
+      const asset = selectAsset(release)
 
-    await ensureDirectory(storageDirectory)
-    const target = path.join(storageDirectory, executableName())
+      await ensureDirectory(storageDirectory)
+      const target = path.join(storageDirectory, executableName())
 
-    const extractType = asset.name.endsWith('.zip') ? 'unzip' : 'untar'
-    progress.report({ message: `Downloading ${asset.name}...` })
-    await coc.download(asset.browser_download_url, {
-      dest: storageDirectory,
-      extract: extractType,
-      strip: 1,
-      timeout: DOWNLOAD_TIMEOUT,
-      headers: { 'User-Agent': USER_AGENT },
-      onProgress: percent => progress.report({ message: `Downloading ${asset.name} (${percent}%)` }),
-    }, token)
+      const extractType = asset.name.endsWith('.zip') ? 'unzip' : 'untar'
+      progress.report({ message: `Downloading ${asset.name}...` })
+      await coc.download(
+        asset.browser_download_url,
+        {
+          dest: storageDirectory,
+          extract: extractType,
+          strip: 1,
+          timeout: DOWNLOAD_TIMEOUT,
+          headers: { 'User-Agent': USER_AGENT },
+          onProgress: percent =>
+            progress.report({ message: `Downloading ${asset.name} (${percent}%)` }),
+        },
+        token,
+      )
 
-    if (token.isCancellationRequested) {
-      throw new Error('Canceled')
-    }
+      if (token.isCancellationRequested) {
+        throw new Error('Canceled')
+      }
 
-    let foundBinary = await locateBinary(storageDirectory)
-    if (!foundBinary) {
-      throw new Error(`The downloaded archive ${asset.name} does not contain ${executableName()}`)
-    }
+      let foundBinary = await locateBinary(storageDirectory)
+      if (!foundBinary) {
+        throw new Error(
+          `The downloaded archive ${asset.name} does not contain ${executableName()}`,
+        )
+      }
 
-    if (path.resolve(foundBinary) !== path.resolve(target)) {
-      await fs.promises.copyFile(foundBinary, target)
-      foundBinary = target
-    }
+      if (path.resolve(foundBinary) !== path.resolve(target)) {
+        await fs.promises.copyFile(foundBinary, target)
+        foundBinary = target
+      }
 
-    await fs.promises.chmod(foundBinary, 0o755).catch(() => undefined)
+      await fs.promises.chmod(foundBinary, 0o755).catch(() => undefined)
 
-    progress.report({ message: 'Verifying...' })
-    if (!(await getGolinesVersion(foundBinary))) {
-      await fs.promises.rm(foundBinary, { force: true }).catch(() => undefined)
-      throw new Error(`The downloaded binary (${release.tag_name}) could not be executed`)
-    }
-    return foundBinary
-  })
+      progress.report({ message: 'Verifying...' })
+      if (!(await getGolinesVersion(foundBinary))) {
+        await fs.promises.rm(foundBinary, { force: true }).catch(() => undefined)
+        throw new Error(`The downloaded binary (${release.tag_name}) could not be executed`)
+      }
+      return foundBinary
+    },
+  )
 
 export const reinstallGolines = async (storageDirectory: string): Promise<string | undefined> => {
   try {
@@ -203,7 +217,10 @@ export const reinstallGolines = async (storageDirectory: string): Promise<string
   }
 }
 
-const promptForUpdate = async (storageDirectory: string, release: GolinesRelease): Promise<void> => {
+const promptForUpdate = async (
+  storageDirectory: string,
+  release: GolinesRelease,
+): Promise<void> => {
   const choice = await coc.window.showInformationMessage(
     `golines ${release.tag_name} is available to install.`,
     'Install',
@@ -232,7 +249,9 @@ const checkForUpdate = async (storageDirectory: string, currentVersion: string):
   }
 }
 
-export const ensureGolinesExists = async (storageDirectory: string): Promise<string | undefined> => {
+export const ensureGolinesExists = async (
+  storageDirectory: string,
+): Promise<string | undefined> => {
   const configured = getOptionalString('path')
   if (configured) {
     return configured
@@ -245,7 +264,9 @@ export const ensureGolinesExists = async (storageDirectory: string): Promise<str
       void checkForUpdate(storageDirectory, version)
       return installed
     }
-    coc.window.showWarningMessage('The installed golines binary could not be executed, installing it again...')
+    coc.window.showWarningMessage(
+      'The installed golines binary could not be executed, installing it again...',
+    )
   }
 
   return reinstallGolines(storageDirectory)

@@ -13,16 +13,22 @@
   "main": "lib/index.js",
   "engines": {
     "coc": "^0.0.80",
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "activationEvents": [
-    "onLanguage:go"
+    "onLanguage:go",
+    "workspaceContains:go.mod"
   ],
   "contributes": {
     "commands": [
       {
         "command": "golines.reinstall",
         "title": "Reinstall golines",
+        "category": "golines"
+      },
+      {
+        "command": "golines.formatWorkspace",
+        "title": "Format workspace Go files",
         "category": "golines"
       }
     ],
@@ -65,14 +71,18 @@
     "prepare": "tsdown",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint:fix": "oxfmt . && eslint . --fix",
     "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "fast-myers-diff": "^3.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",
     "@wongxy/eslint-config": "^4.0.1",
     "coc.nvim": "^0.0.83-next.27",
     "eslint": "^10.10.0",
+    "oxfmt": "^0.71.0",
     "tsdown": "^0.23.0",
     "typescript": "^5.9.3"
   }

@@ -17,7 +17,8 @@ export const ensureDirectory = async (directory: string): Promise<void> => {
 
 export const executableName = (): string => (os.platform() === 'win32' ? 'golines.exe' : 'golines')
 
-export const getConfiguration = (): coc.WorkspaceConfiguration => coc.workspace.getConfiguration('golines')
+export const getConfiguration = (): coc.WorkspaceConfiguration =>
+  coc.workspace.getConfiguration('golines')
 
 export const getOptionalString = (key: string): string | undefined => {
   const value = getConfiguration().get<string | null>(key)

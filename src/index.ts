@@ -1,5 +1,5 @@
 import * as coc from 'coc.nvim'
-import { GolinesFormattingEditProvider } from './formatter'
+import { formatWorkspace, GolinesFormattingEditProvider } from './formatter'
 import { ensureGolinesExists, reinstallGolines } from './installer'
 import { getConfiguration } from './util'
 
@@ -26,6 +26,9 @@ export async function activate(context: coc.ExtensionContext): Promise<void> {
   context.subscriptions.push(
     coc.commands.registerCommand('golines.reinstall', async () => {
       await reinstallGolines(context.storagePath)
+    }),
+    coc.commands.registerCommand('golines.formatWorkspace', async () => {
+      await formatWorkspace(async () => ensureGolinesExists(context.storagePath))
     }),
     coc.workspace.onDidChangeConfiguration((change) => {
       if (change.affectsConfiguration('golines')) {

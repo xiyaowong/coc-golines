@@ -27,9 +27,10 @@
 
 ## ⌨️ Commands
 
-| Command | Description |
-| :------ | :---------- |
-| `golines.reinstall` | Reinstall or update the latest `golines` binary |
+| Command                   | Description                                       |
+| :------------------------ | :------------------------------------------------ |
+| `golines.reinstall`       | Reinstall or update the latest `golines` binary   |
+| `golines.formatWorkspace` | Format all Go files in workspace (`golines -w .`) |
 
 ---
 
