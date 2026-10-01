@@ -1,56 +1,47 @@
 {
   "name": "coc-golines",
-  "version": "0.0.1",
+  "type": "module",
+  "version": "0.0.2",
   "description": "golines extension for coc.nvim",
   "author": "wongxy <xiyao.wong@foxmail.com>",
   "license": "MIT",
-  "main": "lib/index.js",
   "keywords": [
-    "coc.nvim"
+    "coc.nvim",
+    "go",
+    "golines"
   ],
+  "main": "lib/index.js",
   "engines": {
-    "coc": "^0.0.80"
-  },
-  "scripts": {
-    "lint": "eslint src --ext ts",
-    "clean": "rimraf lib",
-    "watch": "node esbuild.js --watch",
-    "build": "node esbuild.js",
-    "prepare": "node esbuild.js"
-  },
-  "prettier": {
-    "singleQuote": true,
-    "printWidth": 120,
-    "semi": true
-  },
-  "devDependencies": {
-    "@types/node": "^16.7.10",
-    "@typescript-eslint/eslint-plugin": "^4.8.2",
-    "@typescript-eslint/parser": "^4.8.2",
-    "coc.nvim": "^0.0.80",
-    "esbuild": "^0.8.42",
-    "eslint": "^7.14.0",
-    "eslint-config-prettier": "^8.1.0",
-    "eslint-plugin-prettier": "^3.1.4",
-    "prettier": "^2.2.0",
-    "rimraf": "^3.0.2",
-    "typescript": "^4.1.2"
+    "coc": "^0.0.80",
+    "node": ">=18.0.0"
   },
   "activationEvents": [
-    "onLanguage:go",
-    "workspaceContains:go.mod",
-    "workspaceContains:go.sum"
+    "onLanguage:go"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "golines.reinstall",
+        "title": "Reinstall golines",
+        "category": "golines"
+      }
+    ],
     "configuration": {
       "type": "object",
-      "title": "coc-golines configuration",
+      "title": "golines",
       "properties": {
+        "golines.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable coc-golines extension"
+        },
         "golines.path": {
-          "type": "string",
-          "default": "golines",
-          "description": "golines path",
-          "scope": "resource"
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Specifies the path of the golines executable, or a command name available on PATH. If not specified, will automatically download one from GitHub releases."
         },
         "golines.args": {
           "type": "array",
@@ -58,10 +49,31 @@
             "type": "string"
           },
           "default": [],
-          "description": "arguments passed to golines",
-          "scope": "resource"
+          "description": "Extra arguments passed to golines"
+        },
+        "golines.checkUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to check for the latest golines version."
         }
       }
     }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "prepare": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "@wongxy/eslint-config": "^4.0.1",
+    "coc.nvim": "^0.0.83-next.27",
+    "eslint": "^10.10.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^5.9.3"
   }
 }
