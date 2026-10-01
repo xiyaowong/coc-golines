@@ -72,7 +72,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "oxfmt . && eslint . --fix",
-    "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\""
+    "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\"",
+    "release": "bumpp && npm publish"
   },
   "dependencies": {
     "fast-myers-diff": "^3.2.0"
@@ -80,6 +81,7 @@
   "devDependencies": {
     "@types/node": "^22.20.2",
     "@wongxy/eslint-config": "^4.0.1",
+    "bumpp": "^12.3.0",
     "coc.nvim": "^0.0.83-next.27",
     "eslint": "^10.10.0",
     "oxfmt": "^0.71.0",
