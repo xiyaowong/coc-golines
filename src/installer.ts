@@ -139,62 +139,78 @@ const locateBinary = async (dir: string): Promise<string | undefined> => {
 const installedBinaryPath = (storageDirectory: string): string =>
   path.join(storageDirectory, executableName())
 
-const installGolines = async (storageDirectory: string, version: string): Promise<string> =>
-  coc.window.withProgress(
+const installGolines = async (storageDirectory: string, version: string): Promise<string> => {
+  let installed: string | undefined
+  let failure: unknown
+
+  await coc.window.withProgress(
     { title: `Installing golines (${version})`, cancellable: true },
     async (progress, token) => {
-      progress.report({ message: 'Resolving release...' })
-      const release = await getRelease(version)
-      if (token.isCancellationRequested) {
-        throw new Error('Canceled')
-      }
-      const asset = selectAsset(release)
+      try {
+        progress.report({ message: 'Resolving release...' })
+        const release = await getRelease(version)
+        if (token.isCancellationRequested) {
+          throw new Error('Canceled')
+        }
+        const asset = selectAsset(release)
 
-      await ensureDirectory(storageDirectory)
-      const target = installedBinaryPath(storageDirectory)
+        await ensureDirectory(storageDirectory)
+        const target = installedBinaryPath(storageDirectory)
 
-      const extractType = asset.name.endsWith('.zip') ? 'unzip' : 'untar'
-      progress.report({ message: `Downloading ${asset.name}...` })
-      await coc.download(
-        asset.browser_download_url,
-        {
-          dest: storageDirectory,
-          extract: extractType,
-          strip: 1,
-          timeout: DOWNLOAD_TIMEOUT,
-          headers: { 'User-Agent': USER_AGENT },
-          onProgress: percent =>
-            progress.report({ message: `Downloading ${asset.name} (${percent}%)` }),
-        },
-        token,
-      )
-
-      if (token.isCancellationRequested) {
-        throw new Error('Canceled')
-      }
-
-      let foundBinary = await locateBinary(storageDirectory)
-      if (!foundBinary) {
-        throw new Error(
-          `The downloaded archive ${asset.name} does not contain ${executableName()}`,
+        const extractType = asset.name.endsWith('.zip') ? 'unzip' : 'untar'
+        progress.report({ message: `Downloading ${asset.name}...` })
+        await coc.download(
+          asset.browser_download_url,
+          {
+            dest: storageDirectory,
+            extract: extractType,
+            strip: 1,
+            timeout: DOWNLOAD_TIMEOUT,
+            headers: { 'User-Agent': USER_AGENT },
+            onProgress: percent =>
+              progress.report({ message: `Downloading ${asset.name} (${percent}%)` }),
+          },
+          token,
         )
-      }
 
-      if (path.resolve(foundBinary) !== path.resolve(target)) {
-        await fs.promises.copyFile(foundBinary, target)
-        foundBinary = target
-      }
+        if (token.isCancellationRequested) {
+          throw new Error('Canceled')
+        }
 
-      await fs.promises.chmod(foundBinary, 0o755).catch(() => undefined)
+        let foundBinary = await locateBinary(storageDirectory)
+        if (!foundBinary) {
+          throw new Error(
+            `The downloaded archive ${asset.name} does not contain ${executableName()}`,
+          )
+        }
 
-      progress.report({ message: 'Verifying...' })
-      if (!(await getGolinesVersion(foundBinary))) {
-        await fs.promises.rm(foundBinary, { force: true }).catch(() => undefined)
-        throw new Error(`The downloaded binary (${release.tag_name}) could not be executed`)
+        if (path.resolve(foundBinary) !== path.resolve(target)) {
+          await fs.promises.copyFile(foundBinary, target)
+          foundBinary = target
+        }
+
+        await fs.promises.chmod(foundBinary, 0o755).catch(() => undefined)
+
+        progress.report({ message: 'Verifying...' })
+        if (!(await getGolinesVersion(foundBinary))) {
+          await fs.promises.rm(foundBinary, { force: true }).catch(() => undefined)
+          throw new Error(`The downloaded binary (${release.tag_name}) could not be executed`)
+        }
+        installed = foundBinary
+      } catch (error) {
+        failure = error
       }
-      return foundBinary
     },
   )
+
+  if (failure !== undefined) {
+    throw failure
+  }
+  if (!installed) {
+    throw new Error('golines installation did not complete')
+  }
+  return installed
+}
 
 export const reinstallGolines = async (storageDirectory: string): Promise<string | undefined> => {
   try {
